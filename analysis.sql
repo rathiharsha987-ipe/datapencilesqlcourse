@@ -21,41 +21,21 @@ LIMIT 10;
 
 --PHASE 2 CUSTOMER SEGMENTATION 
 --1. Customer Category (Gold/Silver/Bronze)
-SELECT c.name,
-       CASE 
-           WHEN SUM(o.order_amount - o.discount) > 1000 THEN 'Gold'
-           WHEN SUM(o.order_amount - o.discount)  BETWEEN 500 AND 1000 THEN 'Silver'
-           ELSE 'Bronze'
-       END AS customer_category
-FROM orders o
-JOIN customer c ON o.customer_id = c.customer_id
-GROUP BY c.customer_id ,c.name ;
-
-WITH customer_spending AS (
-    SELECT c.customer_id,
-           c.name,
-           SUM(o.order_amount - o.discount) AS total_spent
-    FROM orders o
-    JOIN customer c ON o.customer_id = c.customer_id
-    GROUP BY c.customer_id, c.name
-),
-percentiles AS (
-    SELECT customer_id,
-           name,
-           total_spent,
-           NTILE(3) OVER (ORDER BY total_spent DESC) AS spending_group
-    FROM customer_spending
-)
-SELECT customer_id,
-       name,
-       total_spent,
-       CASE spending_group
-           WHEN 1 THEN 'High-Value'
-           WHEN 2 THEN 'Medium-Value'
-           WHEN 3 THEN 'Low-Value'
-       END AS customer_segment
-FROM percentiles
-ORDER BY total_spent DESC;
+SELECT customer_category,
+       COUNT(*) AS total_customers
+FROM (
+        SELECT c.customer_id,
+               CASE 
+                   WHEN SUM(o.order_amount - o.discount) > 1000 THEN 'Gold'
+                   WHEN SUM(o.order_amount - o.discount) BETWEEN 500 AND 1000 THEN 'Silver'
+                   ELSE 'Bronze'
+               END AS customer_category
+        FROM orders o
+        JOIN customer c ON o.customer_id = c.customer_id
+        GROUP BY c.customer_id
+     ) AS segmented_customers
+GROUP BY customer_category
+ORDER BY total_customers DESC;
 
 --PHASE 3 RESTAURANT PERFORMANCE 
 --1.Top 10 Restaurants by Revenue
