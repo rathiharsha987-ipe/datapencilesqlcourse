@@ -31,6 +31,32 @@ FROM orders o
 JOIN customer c ON o.customer_id = c.customer_id
 GROUP BY c.customer_id ,c.name ;
 
+WITH customer_spending AS (
+    SELECT c.customer_id,
+           c.name,
+           SUM(o.order_amount - o.discount) AS total_spent
+    FROM orders o
+    JOIN customer c ON o.customer_id = c.customer_id
+    GROUP BY c.customer_id, c.name
+),
+percentiles AS (
+    SELECT customer_id,
+           name,
+           total_spent,
+           NTILE(3) OVER (ORDER BY total_spent DESC) AS spending_group
+    FROM customer_spending
+)
+SELECT customer_id,
+       name,
+       total_spent,
+       CASE spending_group
+           WHEN 1 THEN 'High-Value'
+           WHEN 2 THEN 'Medium-Value'
+           WHEN 3 THEN 'Low-Value'
+       END AS customer_segment
+FROM percentiles
+ORDER BY total_spent DESC;
+
 --PHASE 3 RESTAURANT PERFORMANCE 
 --1.Top 10 Restaurants by Revenue
 SELECT r.restaurant_name, r.restaurant_id,r.city,
